@@ -26,17 +26,24 @@ def process_orders(app):
         payload = {
             "product": order.product,
             "customer": order.customer,
-            "date": order.date_placed.isoformat(),
+            "date": order.date_placed_local.isoformat(),
         }
+        app.logger.info("order date_placed: " + order.date_placed.isoformat())
+        app.logger.info("order date_placed_local: " + order.date_placed_local.isoformat())
 
         response = requests.post(
             app.config["FINANCE_PACKAGE_URL"] + "/ProcessPayment",
             json=payload
         )
+        
+        app.logger.info("Response from endpoint: " + response.text)
+        try:
+            response.raise_for_status()
+            order.set_as_processed()
+        except:
+            app.logger.exception("Error processing order {id}".format(id = order.id))
+            order.set_as_failed()
 
-        response.raise_for_status()
-
-        order.set_as_processed()
         save_order(order)
 
 def get_queue_of_orders_to_process():
